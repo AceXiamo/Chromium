@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-11
+    runs-on: macos-latest-xlarge
     steps:
       - name: Clone depot_tools
         run: |
