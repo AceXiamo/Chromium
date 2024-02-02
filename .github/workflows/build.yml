@@ -1,0 +1,51 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-11
+    steps:
+      - name: Clone depot_tools
+        run: |
+          rm -rf depot_tools
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+
+      - name: Clone Chromium for iOS
+        run: |
+          export PATH="$(pwd)/depot_tools:$PATH"
+          rm -rf chromium
+          mkdir chromium
+          cd chromium
+          fetch --no-history ios
+
+      - name: Compile Chromium for iOS
+        run: |
+          export PATH="$(pwd)/depot_tools:$PATH"
+          cd chromium/src
+          ninja -C out/Debug-iphonesimulator gn_all
+          
+      - name: Prepare Chromium for iOS binaries for release
+        run: |
+          cd chromium/src
+          pushd out/Release-iphoneos
+          mkdir Payload
+          mv Chromium.app Payload/
+          7z a -tzip -mx=9 Chromium.ipa Payload
+          cp Chromium.ipa ~/
+          cp Chromium.ipa ~/chromium/src/
+          popd
+
+      - name: Upload release
+        uses: svenstaro/upload-release-action@2.2.1
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: Chromium.ipa
+          tag: v2.0
+          file_glob: true
